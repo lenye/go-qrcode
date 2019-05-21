@@ -59,8 +59,8 @@ import (
 	"log"
 	"os"
 
-	bitset "github.com/skip2/go-qrcode/bitset"
-	reedsolomon "github.com/skip2/go-qrcode/reedsolomon"
+	"github.com/skip2/go-qrcode/bitset"
+	"github.com/skip2/go-qrcode/reedsolomon"
 )
 
 // Encode a QR Code and return a raw PNG image.
@@ -145,8 +145,8 @@ type QRCode struct {
 
 // New constructs a QRCode.
 //
-//	var q *qrcode.QRCode
-//	q, err := qrcode.New("my content", qrcode.Medium)
+// 	var q *qrcode.QRCode
+// 	q, err := qrcode.New("my content", qrcode.Medium)
 //
 // An error occurs if the content is too long.
 func New(content string, level RecoveryLevel) (*QRCode, error) {
@@ -192,6 +192,61 @@ func New(content string, level RecoveryLevel) (*QRCode, error) {
 		data:    encoded,
 		version: *chosenVersion,
 	}
+
+	// 静区默认值=4
+	q.version.setQuietZoneSize(4)
+
+	q.encode(chosenVersion.numTerminatorBitsRequired(encoded.Len()))
+
+	return q, nil
+}
+
+func NewWithQuietZoneSize(content string, level RecoveryLevel, quietZoneSize int) (*QRCode, error) {
+	encoders := []dataEncoderType{dataEncoderType1To9, dataEncoderType10To26,
+		dataEncoderType27To40}
+
+	var encoder *dataEncoder
+	var encoded *bitset.Bitset
+	var chosenVersion *qrCodeVersion
+	var err error
+
+	for _, t := range encoders {
+		encoder = newDataEncoder(t)
+		encoded, err = encoder.encode([]byte(content))
+
+		if err != nil {
+			continue
+		}
+
+		chosenVersion = chooseQRCodeVersion(level, encoder, encoded.Len())
+
+		if chosenVersion != nil {
+			break
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	} else if chosenVersion == nil {
+		return nil, errors.New("content too long to encode")
+	}
+
+	q := &QRCode{
+		Content: content,
+
+		Level:         level,
+		VersionNumber: chosenVersion.version,
+
+		ForegroundColor: color.Black,
+		BackgroundColor: color.White,
+
+		encoder: encoder,
+		data:    encoded,
+		version: *chosenVersion,
+	}
+
+	// 自定义静区参数
+	q.version.setQuietZoneSize(quietZoneSize)
 
 	q.encode(chosenVersion.numTerminatorBitsRequired(encoded.Len()))
 
@@ -398,7 +453,7 @@ func (q *QRCode) encode(numTerminatorBits int) {
 
 		p := s.penaltyScore()
 
-		//log.Printf("mask=%d p=%3d p1=%3d p2=%3d p3=%3d p4=%d\n", mask, p, s.penalty1(), s.penalty2(), s.penalty3(), s.penalty4())
+		// log.Printf("mask=%d p=%3d p1=%3d p2=%3d p3=%3d p4=%d\n", mask, p, s.penalty1(), s.penalty2(), s.penalty3(), s.penalty4())
 
 		if q.symbol == nil || p < penalty {
 			q.symbol = s
