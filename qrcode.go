@@ -59,8 +59,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/skip2/go-qrcode/bitset"
-	"github.com/skip2/go-qrcode/reedsolomon"
+	"github.com/lenye/go-qrcode/bitset"
+	"github.com/lenye/go-qrcode/reedsolomon"
 )
 
 // Encode a QR Code and return a raw PNG image.
